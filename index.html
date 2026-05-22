@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ДДС Дашборд</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root{
+  --or:#D97B3A; --or2:#E8A878; --orL:#FDF3EB; --orP:#FAF7F4;
+  --g1:#F3F1EE; --g2:#ECEAE7; --g3:#D8D5D0; --g4:#AAA8A4;
+  --g5:#706E6A; --g6:#484644; --blk:#3A3836; --wh:#FFFFFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--g1);color:var(--blk);font-size:13px}
+
+.topbar{background:var(--wh);border-bottom:3px solid var(--or);padding:13px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 6px rgba(0,0,0,.05);position:sticky;top:0;z-index:100}
+.topbar h1{font-size:16px;font-weight:700;color:var(--blk)}
+.topbar h1 em{color:var(--or);font-style:normal}
+.period-sub{font-size:11px;color:var(--g5);margin-top:2px}
+.tbtn{background:var(--or);color:var(--wh);border:none;padding:8px 18px;
+  border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.tbtn:hover{background:#b86828}
+
+#uploadScreen{display:flex;align-items:center;justify-content:center;
+  min-height:calc(100vh - 64px);padding:40px}
+.upload-card{background:var(--wh);border-radius:12px;padding:48px 54px;text-align:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.07);max-width:420px;width:100%}
+.upload-card h2{font-size:18px;font-weight:700;margin-bottom:8px}
+.upload-card p{color:var(--g5);margin-bottom:20px;font-size:12px;line-height:1.6}
+.ulabel{display:inline-block;background:var(--or);color:var(--wh);
+  padding:11px 28px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600}
+.drop-hint{font-size:11px;color:var(--g4);margin-top:10px}
+
+#fileBar{display:none;background:var(--orL);border-bottom:1px solid #EDD5B8;
+  padding:6px 28px;font-size:11px;color:var(--g6);align-items:center;gap:8px}
+#fileBar strong{color:var(--or)}
+
+#dash{display:none;padding:18px 28px 48px}
+
+.month-filter{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.mf-label{font-size:11px;color:var(--g5);font-weight:700;margin-right:2px}
+.mpill{background:var(--wh);border:1px solid var(--g3);color:var(--g6);
+  padding:5px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:500}
+.mpill:hover{border-color:var(--or);color:var(--or)}
+.mpill.active{background:var(--or);border-color:var(--or);color:var(--wh);font-weight:700}
+
+.bal-section{background:var(--wh);border-radius:10px;padding:14px 18px;
+  box-shadow:0 1px 5px rgba(0,0,0,.05);margin-bottom:14px}
+.bal-section-title{font-size:10px;text-transform:uppercase;letter-spacing:.7px;
+  color:var(--g4);margin-bottom:10px;font-weight:700}
+.bal-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.bg-item{background:var(--g1);border-radius:8px;padding:10px 13px;border-left:3px solid var(--g3)}
+.bg-item.i0{border-left-color:var(--or)}.bg-item.i1{border-left-color:var(--g5)}
+.bg-item.i2{border-left-color:var(--g4)}.bg-item.i3{border-left-color:var(--g3)}
+.bg-name{font-size:10px;font-weight:700;color:var(--g5);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:6px}
+.bg-row{display:flex;justify-content:space-between;margin-top:3px}
+.bg-row-lbl{font-size:10px;color:var(--g4)}
+.bg-row-val{font-size:12px;font-weight:700;color:var(--blk)}
+.bg-row-val.end{color:var(--or)}
+.bg-delta{font-size:10px;color:var(--g5);margin-top:5px;padding-top:4px;border-top:1px solid var(--g3)}
+
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.kcard{background:var(--wh);border-radius:10px;padding:14px 16px;
+  box-shadow:0 1px 5px rgba(0,0,0,.05);border-top:3px solid var(--g3)}
+.kcard.ko{border-top-color:var(--or)}.kcard.kg{border-top-color:var(--g5)}
+.kcard.kn-pos{border-top-color:var(--or)}.kcard.kn-neg{border-top-color:var(--g4)}
+.kl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--g4);
+  margin-bottom:4px;font-weight:600}
+.kv{font-size:17px;font-weight:700;color:var(--blk)}
+.ks{font-size:10px;color:var(--g4);margin-top:4px}
+.kbadge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;
+  border-radius:9px;margin-top:4px}
+.kbadge.pos{background:var(--orL);color:var(--or)}
+.kbadge.neg{background:var(--g2);color:var(--g5)}
+
+.section-title{font-size:12px;font-weight:700;color:var(--blk);
+  margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.month-badge{font-size:10px;background:var(--or);color:var(--wh);
+  padding:2px 9px;border-radius:9px;font-weight:600}
+
+.dir-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
+.dcrd{background:var(--wh);border-radius:10px;padding:14px 16px;
+  box-shadow:0 1px 5px rgba(0,0,0,.05);border-top:3px solid var(--g3)}
+.dcrd.d0{border-top-color:var(--or)}.dcrd.d1{border-top-color:var(--g4)}.dcrd.d2{border-top-color:var(--g5)}
+.dcrd h3{font-size:12px;font-weight:700;color:var(--blk);margin-bottom:9px}
+.dm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:9px}
+.dm-item .dml{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--g4)}
+.dm-item .dmv{font-size:13px;font-weight:700;color:var(--blk);margin-top:1px}
+.dir-chart-box{height:160px;margin-bottom:10px}
+.art-list .arow{display:flex;justify-content:space-between;padding:3px 0;
+  font-size:11px;border-bottom:1px solid var(--g2)}
+.arow:last-child{border-bottom:none}
+.arow .an{color:var(--g5);flex:1;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;max-width:155px}
+.arow .av{font-weight:700;color:var(--blk)}
+
+.special-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.spcrd{background:var(--g1);border-radius:8px;padding:9px 13px;
+  border:1px solid var(--g3);display:flex;flex-direction:column;gap:3px}
+.spl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--g4);font-weight:600}
+.spv{font-size:14px;font-weight:700;color:var(--blk)}
+.spm{font-size:10px;color:var(--g5);line-height:1.4}
+
+.charts-r1{display:grid;grid-template-columns:1.3fr 1fr;gap:12px;margin-bottom:14px}
+.charts-r2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.ccrd{background:var(--wh);border-radius:10px;padding:16px 18px;
+  box-shadow:0 1px 5px rgba(0,0,0,.05)}
+.ccrd h3{font-size:12px;font-weight:700;color:var(--blk);margin-bottom:2px}
+.ccrd .csub{font-size:11px;color:var(--g4);margin-bottom:12px}
+.exp-rank-wrap{position:relative;min-height:260px}
+
+.tcrd{background:var(--wh);border-radius:10px;padding:16px 18px;
+  box-shadow:0 1px 5px rgba(0,0,0,.05);overflow-x:auto;margin-bottom:14px}
+.tcrd h3{font-size:12px;font-weight:700;color:var(--blk);margin-bottom:12px}
+table.main{width:100%;border-collapse:collapse;font-size:12px;min-width:560px}
+table.main thead th{background:var(--blk);color:var(--wh);font-size:10px;
+  text-transform:uppercase;letter-spacing:.4px;padding:8px 11px;text-align:right;
+  font-weight:600;white-space:nowrap}
+table.main thead th:first-child{text-align:left;border-radius:5px 0 0 0}
+table.main thead th:last-child{border-radius:0 5px 0 0}
+table.main tbody td{padding:7px 11px;border-bottom:1px solid var(--g2);
+  text-align:right;color:var(--blk)}
+table.main tbody td:first-child{text-align:left;font-weight:600;color:var(--g6)}
+table.main tbody tr:hover td{background:var(--orP)}
+.tr-sep td{background:var(--g2);color:var(--g5);font-size:10px;
+  text-transform:uppercase;letter-spacing:.4px;padding:5px 11px;font-weight:700}
+table.main tfoot td{padding:8px 11px;background:var(--blk);color:var(--wh);
+  font-weight:700;text-align:right}
+table.main tfoot td:first-child{text-align:left;border-radius:0 0 0 5px}
+table.main tfoot td:last-child{border-radius:0 0 5px 0}
+.t-pos{color:var(--or);font-weight:700}.t-neg{color:var(--g5)}
+
+/* DETAIL REPORT */
+.dr-section{background:var(--wh);border-radius:10px;
+  box-shadow:0 1px 5px rgba(0,0,0,.05);overflow:hidden}
+.dr-toggle{padding:13px 18px;cursor:pointer;display:flex;
+  align-items:center;justify-content:space-between;border-bottom:1px solid var(--g2)}
+.dr-toggle:hover{background:var(--g1)}
+.dr-toggle h3{font-size:12px;font-weight:700;color:var(--blk)}
+.dr-btn{font-size:11px;color:var(--or);font-weight:700;white-space:nowrap}
+.dr-body{display:none;overflow-x:auto;max-height:640px;overflow-y:auto}
+.dr-body.open{display:block}
+.dtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
+.dtbl thead th{background:var(--blk);color:var(--wh);font-size:10px;
+  text-transform:uppercase;letter-spacing:.4px;padding:8px 12px;text-align:right;
+  font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:2}
+.dtbl thead th:first-child{text-align:left;min-width:230px;
+  position:sticky;left:0;z-index:3}
+.dtbl td{padding:6px 12px;border-bottom:1px solid var(--g2);
+  text-align:right;white-space:nowrap}
+.dtbl td:first-child{text-align:left;position:sticky;left:0;
+  background:inherit;z-index:1}
+.dr-start td{background:var(--orL);font-weight:700;color:var(--blk)}
+.dr-act td{background:var(--g6);color:var(--wh);font-weight:700;cursor:pointer}
+.dr-act:hover td{background:var(--blk)}
+.dr-dir td{background:var(--g2);font-weight:700;color:var(--blk);cursor:pointer}
+.dr-dir:hover td{background:var(--g3)}
+.dr-art td{background:var(--wh)}
+.dr-art:hover td{background:var(--orP);cursor:default}
+.dr-art td:first-child{padding-left:36px;color:var(--g5)}
+.dr-dir td:first-child{padding-left:20px}
+.dr-expand{font-size:11px;font-weight:700;margin-right:5px;color:var(--or);
+  display:inline-block;width:18px}
+.dr-act .dr-expand{color:var(--wh)}
+.dr-zero{color:var(--g3)}
+
+@media(max-width:1100px){
+  .kpi-row{grid-template-columns:repeat(3,1fr)}
+  .charts-r1,.charts-r2{grid-template-columns:1fr}
+  .bal-grid,.dir-row,.special-row{grid-template-columns:1fr 1fr}
+}
+@media(max-width:660px){
+  .kpi-row,.bal-grid,.dir-row,.special-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>ДДС <em>Дашборд</em></h1>
+    <div class="period-sub" id="periodLabel">Загрузите файл ДДС.xlsx</div>
+  </div>
+  <label for="fi" class="tbtn">Загрузить файл</label>
+</div>
+<input type="file" id="fi" accept=".xlsx,.xls" style="display:none">
+
+<div id="fileBar">
+  Файл: <strong id="fbName"></strong>&nbsp;|&nbsp;Строк: <strong id="fbRows"></strong>&nbsp;|&nbsp;Период: <strong id="fbPer"></strong>
+</div>
+
+<div id="uploadScreen">
+  <div class="upload-card">
+    <h2>Отчёт ДДС</h2>
+    <p>Загрузите <strong>ДДС.xlsx</strong> — остатки читаются автоматически из листа «Остатки»</p>
+    <label for="fi" class="ulabel">Выбрать файл</label>
+    <div class="drop-hint">Поддерживаются .xlsx и .xls</div>
+  </div>
+</div>
+
+<div id="dash">
+  <div class="month-filter" id="monthFilter"></div>
+
+  <div class="bal-section">
+    <div class="bal-section-title">Остатки по счетам — начало и конец периода</div>
+    <div class="bal-grid" id="balGrid"></div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kcard ko"><div class="kl">Остаток на начало</div>
+      <div class="kv" id="kStart">—</div><div class="ks">Все счета</div></div>
+    <div class="kcard kg"><div class="kl">Поступления</div>
+      <div class="kv" id="kInc">—</div><div class="ks" id="kIncS">за период</div></div>
+    <div class="kcard"><div class="kl">Выплаты</div>
+      <div class="kv" id="kExp">—</div><div class="ks" id="kExpS">за период</div></div>
+    <div class="kcard" id="kNetCard"><div class="kl">Чистый поток</div>
+      <div class="kv" id="kNet">—</div><div class="kbadge" id="kNetB"></div></div>
+    <div class="kcard ko"><div class="kl">Остаток на конец</div>
+      <div class="kv" id="kEnd">—</div><div class="ks" id="kEndS">прогноз</div></div>
+  </div>
+
+  <div class="section-title">
+    По направлениям
+    <span class="month-badge" id="dirBadge" style="display:none"></span>
+  </div>
+  <div class="dir-row">
+    <div class="dcrd d0"><h3>Поставки</h3>
+      <div class="dm-grid" id="dm0"></div>
+      <div class="dir-chart-box"><canvas id="dc0"></canvas></div>
+      <div class="art-list" id="al0"></div></div>
+    <div class="dcrd d1"><h3>Проектирование</h3>
+      <div class="dm-grid" id="dm1"></div>
+      <div class="dir-chart-box"><canvas id="dc1"></canvas></div>
+      <div class="art-list" id="al1"></div></div>
+    <div class="dcrd d2"><h3>Общее</h3>
+      <div class="dm-grid" id="dm2"></div>
+      <div class="dir-chart-box"><canvas id="dc2"></canvas></div>
+      <div class="art-list" id="al2"></div></div>
+  </div>
+
+  <div class="special-row">
+    <div class="spcrd"><div class="spl">Личные расходы</div>
+      <div class="spv" id="spLP">—</div><div class="spm" id="spLPm"></div></div>
+    <div class="spcrd"><div class="spl">Дивиденды</div>
+      <div class="spv" id="spDV">—</div><div class="spm" id="spDVm"></div></div>
+    <div class="spcrd"><div class="spl">Капитальный ремонт</div>
+      <div class="spv" id="spKR">—</div><div class="spm" id="spKRm"></div></div>
+  </div>
+
+  <div class="charts-r1">
+    <div class="ccrd"><h3>Динамика остатков</h3>
+      <div class="csub">Остаток на конец каждого месяца</div>
+      <canvas id="chBal" height="170"></canvas></div>
+    <div class="ccrd"><h3>Чистый поток по месяцам</h3>
+      <div class="csub">Поступления минус выплаты</div>
+      <canvas id="chNet" height="170"></canvas></div>
+  </div>
+
+  <div class="charts-r2">
+    <div class="ccrd"><h3>Поступления по направлениям</h3>
+      <div class="csub">Поставки · Проектирование · Общее</div>
+      <canvas id="chIncDir" height="200"></canvas></div>
+    <div class="ccrd"><h3>Рейтинг расходов</h3>
+      <div class="csub" id="expRankSub">Топ статей за весь период</div>
+      <div class="exp-rank-wrap"><canvas id="chExpLine"></canvas></div></div>
+  </div>
+
+  <div class="tcrd">
+    <h3>Сводная таблица по месяцам</h3>
+    <table class="main" id="tbl"><thead></thead><tbody></tbody><tfoot></tfoot></table>
+  </div>
+
+  <div class="dr-section">
+    <div class="dr-toggle" onclick="toggleDR()">
+      <h3>Детальный отчёт по статьям</h3>
+      <div class="dr-btn" id="drBtn">[+] Раскрыть</div>
+    </div>
+    <div class="dr-body" id="drBody">
+      <table class="dtbl">
+        <thead id="drHead"></thead>
+        <tbody id="drRows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+Chart.register(ChartDataLabels);
+
+const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь',
+              'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const SKIP_ART=['Перевод между счетами ','Перевод между счетами'];
+const SPEC_ART=['Личные расходы','Дивиденды','Капитальный ремонт'];
+const MAIN_DIRS=['Поставки','Проектирование','Общее'];
+const ACT_ORD=['Операционная','Финансовая','Инвестиционная','Личные расходы'];
+const GRP_ORD=['ЛЕОН ЛАБ','ЛЛ АР','ИП Ганова','Подотчетные'];
+const INC_COL='#D97B3A', EXP_COL='#C8C0B8';
+
+let rawData=[], rawDataAll=[], balWallets={}, balGroups={};
+let allMonths=[], selMonth=null, charts={};
+
+// FILE
+document.getElementById('fi').addEventListener('change',e=>{
+  if(e.target.files[0])go(e.target.files[0]); e.target.value='';
+});
+document.getElementById('uploadScreen').addEventListener('dragover',e=>e.preventDefault());
+document.getElementById('uploadScreen').addEventListener('drop',e=>{
+  e.preventDefault(); if(e.dataTransfer.files[0])go(e.dataTransfer.files[0]);
+});
+
+function go(file){
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      loadBalances(wb); loadData(wb);
+      allMonths=[...new Set(rawData.map(d=>d.month))].filter(Boolean)
+        .sort((a,b)=>MONTHS.indexOf(a)-MONTHS.indexOf(b));
+      document.getElementById('uploadScreen').style.display='none';
+      document.getElementById('fileBar').style.display='flex';
+      document.getElementById('dash').style.display='block';
+      document.getElementById('fbName').textContent=file.name;
+      document.getElementById('fbRows').textContent=rawData.length.toLocaleString('ru-RU');
+      buildMonthFilter();
+      render();
+    }catch(err){alert('Ошибка: '+err.message);}
+  };
+  r.readAsArrayBuffer(file);
+}
+
+function loadBalances(wb){
+  balWallets={}; balGroups={};
+  const ws=wb.Sheets['Остатки']; if(!ws)return;
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  for(let i=1;i<rows.length;i++){
+    const w=rows[i][0],g=rows[i][1],a=parseFloat(rows[i][2])||0;
+    if(!w)continue;
+    balWallets[w]={group:g||w,amount:a};
+    balGroups[g||w]=(balGroups[g||w]||0)+a;
+  }
+}
+
+function loadData(wb){
+  rawData=[]; rawDataAll=[];
+  const ws=wb.Sheets['ДДС']; if(!ws)return;
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]; if(!r||r.length<22)continue;
+    const month=r[0],wallet=r[2],amount=r[14],article=r[18],dir=r[20]||'',activity=r[21]||'';
+    if(!month||!article||amount===null||amount===undefined)continue;
+    const a=parseFloat(amount)||0;
+    // rawDataAll включает ВСЕ операции (в т.ч. переводы) — для расчёта остатков
+    rawDataAll.push({month,wallet:wallet||'',amount:a,article,dir,activity});
+    if(SKIP_ART.includes(article))continue;
+    rawData.push({month,wallet:wallet||'',amount:a,article,dir,activity});
+  }
+}
+
+function buildMonthFilter(){
+  const mf=document.getElementById('monthFilter');
+  mf.innerHTML='<div class="mf-label">Период:</div>';
+  const all=mkPill('Весь период','',true); mf.appendChild(all);
+  allMonths.forEach(m=>mf.appendChild(mkPill(m,m,false)));
+}
+function mkPill(label,val,active){
+  const p=document.createElement('div');
+  p.className='mpill'+(active?' active':''); p.textContent=label; p.dataset.m=val;
+  p.onclick=()=>setMonth(val||null); return p;
+}
+function setMonth(m){
+  selMonth=m;
+  document.querySelectorAll('.mpill').forEach(p=>p.classList.toggle('active',p.dataset.m===(m||'')));
+  render();
+}
+
+function aggData(monthF){
+  const data=monthF?rawData.filter(d=>d.month===monthF):rawData;
+  const months=monthF?[monthF]:allMonths;
+  const byM={}; months.forEach(m=>byM[m]={inc:0,exp:0});
+  const byDM={}, byDA={}, bySA={};
+  data.forEach(d=>{
+    if(!byM[d.month])return;
+    if(d.amount>0)byM[d.month].inc+=d.amount; else byM[d.month].exp+=d.amount;
+    if(!byDM[d.dir])byDM[d.dir]={};
+    if(!byDM[d.dir][d.month])byDM[d.dir][d.month]={inc:0,exp:0};
+    if(d.amount>0)byDM[d.dir][d.month].inc+=d.amount; else byDM[d.dir][d.month].exp+=d.amount;
+    if(!byDA[d.dir])byDA[d.dir]={};
+    byDA[d.dir][d.article]=(byDA[d.dir][d.article]||0)+d.amount;
+    if(SPEC_ART.includes(d.article)){
+      if(!bySA[d.article])bySA[d.article]={};
+      bySA[d.article][d.month]=(bySA[d.article][d.month]||0)+d.amount;
+    }
+  });
+  const startTotal=Object.values(balGroups).reduce((s,v)=>s+v,0);
+  const groupEndBal={};
+  Object.entries(balGroups).forEach(([g,v])=>groupEndBal[g]=v);
+  // Используем rawDataAll (включая переводы между счетами) для точного расчёта остатков
+  rawDataAll.forEach(d=>{
+    const g=balWallets[d.wallet]?.group;
+    if(g&&groupEndBal[g]!==undefined)groupEndBal[g]+=d.amount;
+  });
+  // Остаток по каждому кошельку
+  const walletEndBal={};
+  Object.entries(balWallets).forEach(([w,v])=>walletEndBal[w]=v.amount);
+  rawDataAll.forEach(d=>{
+    if(walletEndBal[d.wallet]!==undefined)walletEndBal[d.wallet]+=d.amount;
+  });
+  return{months,byM,byDM,byDA,bySA,startTotal,groupEndBal,walletEndBal};
+}
+
+function render(){
+  const a=aggData(selMonth), fa=selMonth?aggData(null):a;
+  const{byM,byDM,byDA,bySA,startTotal,groupEndBal,walletEndBal}=a;
+  const months=selMonth?[selMonth]:allMonths;
+
+  const p1=allMonths[0],pN=allMonths[allMonths.length-1];
+  document.getElementById('periodLabel').textContent='Период: '+(p1===pN?p1:p1+'–'+pN);
+  document.getElementById('fbPer').textContent=p1===pN?p1:p1+'–'+pN;
+
+  const badge=document.getElementById('dirBadge');
+  badge.style.display=selMonth?'inline':'none';
+  if(selMonth)badge.textContent=selMonth;
+
+  document.getElementById('expRankSub').textContent=
+    selMonth?'За '+selMonth:'Топ статей за весь период';
+
+  renderBalGroups(groupEndBal,walletEndBal,startTotal);
+
+  const totInc=Object.values(byM).reduce((s,v)=>s+v.inc,0);
+  const totExp=Object.values(byM).reduce((s,v)=>s+v.exp,0);
+  const net=totInc+totExp;
+  const fullEnd=Object.values(fa.groupEndBal).reduce((s,v)=>s+v,0);
+  document.getElementById('kStart').textContent=fmtK(startTotal)+' ₽';
+  document.getElementById('kInc').textContent='+'+fmtK(totInc)+' ₽';
+  document.getElementById('kExp').textContent='−'+fmtK(Math.abs(totExp))+' ₽';
+  document.getElementById('kIncS').textContent=selMonth?selMonth:(allMonths.length+' мес.');
+  document.getElementById('kExpS').textContent=selMonth?selMonth:(allMonths.length+' мес.');
+  document.getElementById('kNet').textContent=(net>=0?'+':'−')+fmtK(Math.abs(net))+' ₽';
+  document.getElementById('kNetCard').className='kcard '+(net>=0?'kn-pos':'kn-neg');
+  const kb=document.getElementById('kNetB');
+  kb.className='kbadge '+(net>=0?'pos':'neg');
+  kb.textContent=net>=0?'Положительный':'Отрицательный';
+  document.getElementById('kEnd').textContent=fmtK(fullEnd)+' ₽';
+  document.getElementById('kEndS').textContent='после '+allMonths[allMonths.length-1];
+
+  MAIN_DIRS.forEach((dir,i)=>renderDirPanel(dir,i,months,byDM,byDA));
+  renderSpecial(bySA);
+  renderBalChart(fa);
+  renderNetChart(fa);
+  renderIncDirChart(fa);
+  renderExpRankChart();  // uses selMonth directly from rawData
+  renderSummaryTable(fa);
+}
+
+function renderBalGroups(groupEndBal,walletEndBal,startTotal){
+  const grid=document.getElementById('balGrid'); grid.innerHTML='';
+  GRP_ORD.forEach((grp,i)=>{
+    const s=balGroups[grp]||0,e=groupEndBal[grp]||0,d=e-s;
+    const el=document.createElement('div');
+    el.className='bg-item i'+i;
+    el.innerHTML=`<div class="bg-name">${grp}</div>
+      <div class="bg-row"><span class="bg-row-lbl">Начало</span><span class="bg-row-val">${fmtK(s)} ₽</span></div>
+      <div class="bg-row"><span class="bg-row-lbl">Конец</span><span class="bg-row-val end">${fmtK(e)} ₽</span></div>
+      <div class="bg-delta">${d>=0?'+':'−'}${fmtK(Math.abs(d))} ₽</div>`;
+    grid.appendChild(el);
+  });
+}
+
+function renderSpecial(bySA){
+  [['Личные расходы','spLP','spLPm'],['Дивиденды','spDV','spDVm'],
+   ['Капитальный ремонт','spKR','spKRm']].forEach(([art,vid,mid])=>{
+    const d=bySA[art]||{};
+    const total=Object.values(d).reduce((s,v)=>s+v,0);
+    document.getElementById(vid).textContent=(total>=0?'+':'−')+fmtK(Math.abs(total))+' ₽';
+    document.getElementById(mid).textContent=
+      allMonths.filter(m=>d[m]).map(m=>m.slice(0,3)+': '+fmtK(Math.abs(d[m]))).join(' · ')||'нет данных';
+  });
+}
+
+function renderDirPanel(dir,idx,months,byDM,byDA){
+  const dm=byDM[dir]||{},da=byDA[dir]||{};
+  const inc=months.reduce((s,m)=>s+(dm[m]?.inc||0),0);
+  const exp=months.reduce((s,m)=>s+(dm[m]?.exp||0),0);
+  const net=inc+exp;
+  document.getElementById('dm'+idx).innerHTML=`
+    <div class="dm-item"><div class="dml">Поступило</div><div class="dmv">+${fmtK(inc)}</div></div>
+    <div class="dm-item"><div class="dml">Выплачено</div><div class="dmv">−${fmtK(Math.abs(exp))}</div></div>
+    <div class="dm-item"><div class="dml">Нетто</div><div class="dmv">${net>=0?'+':'−'}${fmtK(Math.abs(net))}</div></div>`;
+  killChart('dc'+idx);
+  charts['dc'+idx]=new Chart(document.getElementById('dc'+idx).getContext('2d'),{
+    type:'bar',
+    data:{labels:allMonths.map(m=>m.slice(0,3)),datasets:[
+      {label:'Приход',data:allMonths.map(m=>dm[m]?.inc||0),backgroundColor:INC_COL+'BB',borderRadius:3},
+      {label:'Расход',data:allMonths.map(m=>Math.abs(dm[m]?.exp||0)),backgroundColor:EXP_COL,borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:9},boxWidth:9,color:'#706E6A'}},
+        datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]>0,
+          anchor:'end',align:'top',formatter:v=>v>0?fmtK(v):'',
+          font:{size:8,weight:'600'},color:'#484644',padding:1}},
+      scales:{
+        x:{ticks:{font:{size:8},color:'#AAA8A4'},grid:{display:false}},
+        y:{ticks:{font:{size:8},color:'#AAA8A4',callback:v=>fmtK(v)},grid:{color:'#ECEAE7'}}
+      }}
+  });
+  const sorted=Object.entries(da).filter(([a])=>!SPEC_ART.includes(a))
+    .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,4);
+  document.getElementById('al'+idx).innerHTML=sorted.map(([art,val])=>
+    `<div class="arow"><span class="an" title="${art}">${art}</span>
+     <span class="av">${val>=0?'+':'−'}${fmtK(Math.abs(val))}</span></div>`).join('');
+}
+
+function renderBalChart(fa){
+  killChart('bal');
+  const labels=['Начало',...allMonths];
+  let c=fa.startTotal;
+  const data=[c,...allMonths.map(m=>{c+=(fa.byM[m]?.inc||0)+(fa.byM[m]?.exp||0);return c;})];
+  charts.bal=new Chart(document.getElementById('chBal').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[{label:'Остаток',data,
+      borderColor:'#D97B3A',backgroundColor:'rgba(217,123,58,.08)',
+      borderWidth:2.5,pointRadius:5,pointBackgroundColor:'#D97B3A',fill:true,tension:.3}]},
+    options:{responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>' '+fmtN(c.raw)+' ₽'}},
+        datalabels:{display:true,align:'top',anchor:'end',formatter:v=>fmtK(v),
+          font:{size:9,weight:'700'},color:'#484644',
+          backgroundColor:'rgba(255,255,255,.85)',borderRadius:3,
+          padding:{top:1,bottom:1,left:3,right:3}}},
+      scales:{x:{ticks:{font:{size:10},color:'#706E6A'},grid:{display:false}},
+        y:{ticks:{font:{size:10},color:'#AAA8A4',callback:v=>fmtK(v)},grid:{color:'#ECEAE7'}}}}
+  });
+}
+
+function renderNetChart(fa){
+  killChart('net');
+  const nets=allMonths.map(m=>(fa.byM[m]?.inc||0)+(fa.byM[m]?.exp||0));
+  charts.net=new Chart(document.getElementById('chNet').getContext('2d'),{
+    type:'bar',
+    data:{labels:allMonths,datasets:[{label:'Чистый поток',data:nets,
+      backgroundColor:nets.map(v=>v>=0?'#D97B3AAA':'#C8C0B8'),borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>' '+(c.raw>=0?'+':'')+fmtN(c.raw)+' ₽'}},
+        datalabels:{display:true,anchor:'end',
+          align:ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'top':'bottom',
+          formatter:v=>v===0?'':fmtK(v),font:{size:9,weight:'700'},color:'#484644'}},
+      scales:{x:{ticks:{font:{size:10},color:'#706E6A'},grid:{display:false}},
+        y:{ticks:{font:{size:10},color:'#AAA8A4',callback:v=>fmtK(v)},grid:{color:'#ECEAE7'}}}}
+  });
+}
+
+function renderIncDirChart(fa){
+  killChart('incDir');
+  const dirCols=['#D97B3A','#C4956A','#9A9A9A'];
+  charts.incDir=new Chart(document.getElementById('chIncDir').getContext('2d'),{
+    type:'bar',
+    data:{labels:allMonths,datasets:MAIN_DIRS.map((dir,i)=>({
+      label:dir,data:allMonths.map(m=>fa.byDM[dir]?.[m]?.inc||0),
+      backgroundColor:dirCols[i]+'AA',borderColor:dirCols[i],borderWidth:1.5,borderRadius:4
+    }))},
+    options:{responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{labels:{font:{size:11},boxWidth:12,color:'#706E6A'}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: +${fmtN(c.raw)} ₽`}},
+        datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]>0,
+          anchor:'end',align:'top',formatter:v=>fmtK(v),
+          font:{size:8,weight:'600'},color:'#484644'}},
+      scales:{x:{ticks:{font:{size:10},color:'#706E6A'},grid:{display:false}},
+        y:{ticks:{font:{size:10},color:'#AAA8A4',callback:v=>fmtK(v)},grid:{color:'#ECEAE7'}}}}
+  });
+}
+
+function renderExpRankChart(){
+  killChart('expLine');
+  // Итог по каждой статье — только статьи с отрицательным итогом
+  const totals={};
+  rawData.forEach(d=>{
+    if(selMonth&&d.month!==selMonth)return;
+    totals[d.article]=(totals[d.article]||0)+d.amount;
+  });
+  const top=Object.entries(totals).filter(([,v])=>v<0).sort((a,b)=>a[1]-b[1]).slice(0,8);
+  const labels=top.map(([art])=>art.length>22?art.slice(0,22)+'…':art);
+  const vals=top.map(([,v])=>Math.abs(v));
+  const maxVal=vals[0]||1;
+  charts.expLine=new Chart(document.getElementById('chExpLine').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:'#C8C0B8',
+      hoverBackgroundColor:'#B8B0A8',borderRadius:3,barThickness:22}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      layout:{padding:{right:90}},
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>' '+fmtN(c.raw)+' ₽'}},
+        datalabels:{display:true,anchor:'end',align:'right',
+          formatter:v=>fmtN(v),font:{size:11,weight:'700'},color:'#484644',padding:{left:8}}},
+      scales:{x:{display:false,max:maxVal*1.35,grid:{display:false}},
+        y:{ticks:{font:{size:11},color:'#484644',padding:4},grid:{display:false}}}}
+  });
+}
+
+function renderSummaryTable(fa){
+  const thead=document.querySelector('#tbl thead');
+  const tbody=document.querySelector('#tbl tbody');
+  const tfoot=document.querySelector('#tbl tfoot');
+  thead.innerHTML=`<tr><th>Показатель</th>${allMonths.map(m=>`<th>${m.slice(0,3)}</th>`).join('')}<th>Итого</th></tr>`;
+  const fI=v=>`<span class="t-pos">+${fmtN(v)}</span>`;
+  const fE=v=>`<span class="t-neg">−${fmtN(Math.abs(v))}</span>`;
+  const fNT=v=>`<span style="font-weight:700">${v>=0?'+':'−'}${fmtN(Math.abs(v))}</span>`;
+  const fB=v=>`<span style="font-weight:700;color:var(--or)">${fmtN(v)}</span>`;
+  const rows=[];
+  rows.push({l:'Поступления',v:allMonths.map(m=>fa.byM[m]?.inc||0),f:fI});
+  rows.push({l:'Выплаты',v:allMonths.map(m=>fa.byM[m]?.exp||0),f:fE});
+  rows.push({l:'Чистый поток',v:allMonths.map(m=>(fa.byM[m]?.inc||0)+(fa.byM[m]?.exp||0)),f:fNT});
+  rows.push({sep:'По направлениям'});
+  MAIN_DIRS.forEach(dir=>{
+    const dm=fa.byDM[dir]||{};
+    rows.push({l:'  '+dir,v:allMonths.map(m=>((dm[m]?.inc||0)+(dm[m]?.exp||0))),f:fNT});
+  });
+  rows.push({sep:'Отдельные статьи'});
+  SPEC_ART.forEach(art=>{
+    rows.push({l:'  '+art,
+      v:allMonths.map(m=>rawData.filter(d=>d.article===art&&d.month===m).reduce((s,d)=>s+d.amount,0)),
+      f:fNT});
+  });
+  rows.push({sep:'Остатки'});
+  let c=fa.startTotal;
+  rows.push({l:'Остаток на конец',
+    v:allMonths.map(m=>{c+=(fa.byM[m]?.inc||0)+(fa.byM[m]?.exp||0);return c;}),
+    f:fB,noTotal:true});
+  tbody.innerHTML=rows.map(row=>{
+    if(row.sep)return`<tr class="tr-sep"><td colspan="${allMonths.length+2}">${row.sep}</td></tr>`;
+    const total=row.noTotal?row.v[row.v.length-1]:row.v.reduce((a,b)=>a+b,0);
+    return`<tr><td>${row.l}</td>${row.v.map(v=>`<td>${row.f(v)}</td>`).join('')}<td>${row.f(total)}</td></tr>`;
+  }).join('');
+  const tI=Object.values(fa.byM).reduce((s,v)=>s+v.inc,0);
+  const tE=Object.values(fa.byM).reduce((s,v)=>s+v.exp,0);
+  const tN=tI+tE;
+  tfoot.innerHTML=`<tr><td>ИТОГО</td>
+    ${allMonths.map(m=>{const n=(fa.byM[m]?.inc||0)+(fa.byM[m]?.exp||0);return`<td>${n>=0?'+':'−'}${fmtN(Math.abs(n))}</td>`;}).join('')}
+    <td>${tN>=0?'+':'−'}${fmtN(Math.abs(tN))}</td></tr>`;
+}
+
+// DETAIL REPORT
+let drOpen=false, drBuilt=false;
+
+function toggleDR(){
+  drOpen=!drOpen;
+  document.getElementById('drBody').classList.toggle('open',drOpen);
+  document.getElementById('drBtn').textContent=drOpen?'[−] Свернуть':'[+] Раскрыть';
+  if(drOpen&&!drBuilt){buildDR(); drBuilt=true;}
+}
+
+function buildDR(){
+  // activity -> dir -> article -> month -> sum
+  const struct={};
+  rawData.forEach(d=>{
+    if(!struct[d.activity])struct[d.activity]={};
+    if(!struct[d.activity][d.dir])struct[d.activity][d.dir]={};
+    if(!struct[d.activity][d.dir][d.article])struct[d.activity][d.dir][d.article]={};
+    const ms=struct[d.activity][d.dir][d.article];
+    ms[d.month]=(ms[d.month]||0)+d.amount;
+  });
+
+  // Opening balance per month
+  const fa=aggData(null);
+  const startTotal=Object.values(balGroups).reduce((s,v)=>s+v,0);
+  const openBal={};
+  let c=startTotal;
+  allMonths.forEach((m,i)=>{
+    openBal[m]=c;
+    c+=(fa.byM[m]?.inc||0)+(fa.byM[m]?.exp||0);
+  });
+
+  document.getElementById('drHead').innerHTML=
+    `<tr><th>Статья</th>${allMonths.map(m=>`<th>${m}</th>`).join('')}<th>Итого</th></tr>`;
+
+  let rows='';
+
+  // Opening balance row
+  const startTot=Object.values(balGroups).reduce((s,v)=>s+v,0);
+  rows+=`<tr class="dr-start"><td>Деньги на начало периода</td>
+    ${allMonths.map(m=>`<td>${fmtN(openBal[m])}</td>`).join('')}
+    <td>${fmtN(startTot)}</td></tr>`;
+
+  let ai=0;
+  ACT_ORD.forEach(act=>{
+    if(!struct[act])return;
+    const aId='a'+(ai++);
+    const aM={};
+    allMonths.forEach(m=>{
+      aM[m]=Object.values(struct[act]).reduce((s,dirs)=>
+        s+Object.values(dirs).reduce((s2,ms)=>s2+(ms[m]||0),0),0);
+    });
+    const aT=Object.values(aM).reduce((s,v)=>s+v,0);
+    rows+=`<tr class="dr-act" onclick="drToggle('${aId}')">
+      <td><span class="dr-expand" id="e_${aId}">[+]</span>${act}</td>
+      ${allMonths.map(m=>`<td>${drNum(aM[m])}</td>`).join('')}
+      <td>${drNum(aT)}</td></tr>`;
+
+    const DIR_ORD=[...MAIN_DIRS,'Личные расходы',
+      ...Object.keys(struct[act]).filter(d=>!MAIN_DIRS.includes(d)&&d!=='Личные расходы')];
+    let di=0;
+    DIR_ORD.forEach(dir=>{
+      if(!struct[act][dir])return;
+      const dId=aId+'d'+(di++);
+      const dM={};
+      allMonths.forEach(m=>{
+        dM[m]=Object.values(struct[act][dir]).reduce((s,ms)=>s+(ms[m]||0),0);
+      });
+      const dT=Object.values(dM).reduce((s,v)=>s+v,0);
+      rows+=`<tr class="dr-dir" data-p="${aId}" onclick="drToggle('${dId}')" style="display:none">
+        <td><span class="dr-expand" id="e_${dId}">[+]</span>${dir}</td>
+        ${allMonths.map(m=>`<td>${drNum(dM[m])}</td>`).join('')}
+        <td>${drNum(dT)}</td></tr>`;
+      Object.entries(struct[act][dir])
+        .map(([art,ms])=>({art,ms,tot:Object.values(ms).reduce((s,v)=>s+v,0)}))
+        .sort((a,b)=>Math.abs(b.tot)-Math.abs(a.tot))
+        .forEach(({art,ms,tot})=>{
+          rows+=`<tr class="dr-art" data-p="${dId}" style="display:none">
+            <td>${art}</td>
+            ${allMonths.map(m=>ms[m]!==undefined?`<td>${drNum(ms[m])}</td>`:`<td class="dr-zero">—</td>`).join('')}
+            <td>${drNum(tot)}</td></tr>`;
+        });
+    });
+  });
+
+  document.getElementById('drRows').innerHTML=rows;
+}
+
+function drToggle(id){
+  const rows=document.querySelectorAll(`[data-p="${id}"]`);
+  const isOpen=rows.length>0&&rows[0].style.display!=='none';
+  if(isOpen){
+    // рекурсивно скрываем вложенные
+    const hideAll=pid=>{
+      document.querySelectorAll(`[data-p="${pid}"]`).forEach(r=>{
+        const cid=r.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        if(cid)hideAll(cid);
+        r.style.display='none';
+        const b=document.getElementById('e_'+cid);
+        if(b)b.textContent='[+]';
+      });
+    };
+    hideAll(id);
+  } else {
+    rows.forEach(r=>r.style.display='');
+  }
+  const btn=document.getElementById('e_'+id);
+  if(btn)btn.textContent=isOpen?'[+]':'[−]';
+}
+
+function drNum(v){
+  if(!v||v===0)return'<span class="dr-zero">0</span>';
+  const abs=Math.abs(v).toLocaleString('ru-RU',{maximumFractionDigits:0});
+  return v>0?abs:`<span style="color:var(--g5)">${abs}</span>`;
+}
+
+// HELPERS
+function fmtK(v){
+  const a=Math.abs(v);
+  if(a>=1e6)return(a/1e6).toLocaleString('ru-RU',{maximumFractionDigits:2})+' млн';
+  if(a>=1e3)return(a/1e3).toLocaleString('ru-RU',{maximumFractionDigits:0})+' тыс';
+  return a.toLocaleString('ru-RU',{maximumFractionDigits:0});
+}
+function fmtN(v){return Math.abs(v).toLocaleString('ru-RU',{maximumFractionDigits:0});}
+function killChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+</script>
+</body>
+</html>
